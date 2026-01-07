@@ -625,7 +625,59 @@
 
             } catch (e) {
                 console.error(e);
-                document.getElementById('hotGrid').innerHTML = '<div style="color:red">数据加载失败</div>';
+                renderErrorPanel(e);
+            }
+        }
+
+        // 渲染错误面板
+        function renderErrorPanel(error) {
+            const grid = document.getElementById('hotGrid');
+            const sources = window.vodApi.getSources();
+            const currentSource = window.store?.getSettings()?.source || 'hongniu';
+
+            let buttonsHtml = Object.entries(sources).map(([key, info]) => {
+                const isCurrent = key === currentSource;
+                return `
+                    <button 
+                        onclick="switchSourceAndReload('${key}')"
+                        style="
+                            padding: 8px 16px; 
+                            margin: 4px;
+                            border: 1px solid ${isCurrent ? 'var(--accent)' : 'rgba(255,255,255,0.2)'};
+                            background: ${isCurrent ? 'var(--accent)' : 'rgba(255,255,255,0.1)'};
+                            color: white; 
+                            border-radius: 4px;
+                            cursor: pointer;
+                        "
+                    >
+                        ${info.name} ${isCurrent ? '(当前)' : ''}
+                    </button>
+                `;
+            }).join('');
+
+            grid.innerHTML = `
+                <div style="padding: 40px; text-align: center; background: var(--bg-card); border-radius: 8px;">
+                    <h3 style="color: var(--accent); margin-bottom: 16px;">❌ 数据加载失败</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                        原因: ${error.message || '未知错误'}
+                    </p>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 24px;">
+                        如果是 NetworkError 或 Failed to fetch，通常是因为该资源站不允许跨域访问(CORS)。<br>
+                        请尝试切换其他资源站。
+                    </div>
+                    <div style="margin-bottom: 16px; color: var(--text-primary);">尝试切换线路:</div>
+                    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+                        ${buttonsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 切换源并重载
+        function switchSourceAndReload(key) {
+            if (confirm('确定切换源并重试吗？')) {
+                window.store.updateSettings({ source: key });
+                window.location.reload();
             }
         }
 
