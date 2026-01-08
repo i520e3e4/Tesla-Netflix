@@ -44,7 +44,7 @@ const API_SOURCES = {
 class VodClient {
     constructor(sourceKey = 'hongniu') {
         this.source = API_SOURCES[sourceKey] || API_SOURCES.hongniu;
-        this.timeout = 10000; // 10s timeout
+        this.timeout = 15000; // 15s timeout
     }
 
     /**

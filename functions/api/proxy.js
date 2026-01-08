@@ -43,22 +43,24 @@ export async function onRequest(context) {
   }
 
   // 构建新请求
-  // 设置 User-Agent 模拟浏览器，并伪造 Referer
+  // 移除 Referer，只保留 UA
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8秒后端超时
+
   const modifiedRequest = new Request(targetUrl, {
     method: request.method,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Referer': targetUrl.origin
-    }
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    },
+    signal: controller.signal
   });
 
   try {
     const response = await fetch(modifiedRequest);
+    clearTimeout(timeoutId);
 
     // 构建响应
     const newHeaders = new Headers(response.headers);
-
-    // 覆盖/添加 CORS 头
     Object.keys(corsHeaders).forEach(key => newHeaders.set(key, corsHeaders[key]));
 
     return new Response(response.body, {
@@ -68,8 +70,10 @@ export async function onRequest(context) {
     });
 
   } catch (err) {
-    return new Response(`Proxy Error: ${err.message}`, {
-      status: 502,
+    clearTimeout(timeoutId);
+    const isTimeout = err.name === 'AbortError';
+    return new Response(`Proxy Error: ${isTimeout ? 'Upstream Timeout (8s)' : err.message}`, {
+      status: isTimeout ? 504 : 502,
       headers: corsHeaders
     });
   }
