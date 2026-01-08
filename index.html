@@ -690,7 +690,8 @@
                 log(`[TEST] Connecting to proxy...`);
                 // 使用一个极其稳定的 URL 测试
                 const testTarget = 'https://www.baidu.com';
-                const proxyUrl = `/api/proxy?url=${encodeURIComponent(testTarget)}`;
+                // 使用 btoa 编码，模拟真实业务请求
+                const proxyUrl = `/api/proxy?url=${encodeURIComponent(btoa(testTarget))}`;
 
                 const start = performance.now();
                 const res = await fetch(proxyUrl);

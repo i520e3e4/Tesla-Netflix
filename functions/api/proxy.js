@@ -16,13 +16,23 @@ export async function onRequest(context) {
   const url = new URL(request.url);
 
   // 获取目标 API URL
-  const targetUrlStr = url.searchParams.get('url');
+  let targetUrlStr = url.searchParams.get('url');
 
   if (!targetUrlStr) {
     return new Response('Missing "url" parameter', {
       status: 400,
       headers: corsHeaders
     });
+  }
+
+  // 尝试 Base64 解码 (如果不是以 http 开头，假设是 Base64)
+  if (!targetUrlStr.startsWith('http')) {
+    try {
+      targetUrlStr = atob(targetUrlStr);
+    } catch (e) {
+      // 解码失败，可能是无效串，保持原样尝试或报错
+      console.error('Base64 decode failed', e);
+    }
   }
 
   let targetUrl;

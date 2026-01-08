@@ -55,7 +55,8 @@ class VodClient {
         // 使用 Cloudflare Functions 代理
         // 目标: /api/proxy?url=ENCODED_TARGET_URL&other_params...
         const proxyUrl = new URL('/api/proxy', window.location.origin);
-        proxyUrl.searchParams.append('url', this.source.url);
+        // 使用 Base64 编码 URL，避免被防广告插件或 WAF 拦截
+        proxyUrl.searchParams.append('url', btoa(this.source.url));
 
         // 追加其他业务参数
         Object.keys(params).forEach(key => proxyUrl.searchParams.append(key, params[key]));
