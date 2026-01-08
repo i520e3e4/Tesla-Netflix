@@ -16,7 +16,7 @@ const API_SOURCES = {
     },
     feifei: {
         name: '非凡资源 (综合/18+)',
-        url: 'http://cj.ffzyapi.com/api.php/provide/vod/from/ffm3u8/at/json',
+        url: 'https://cj.ffzyapi.com/api.php/provide/vod/from/ffm3u8/at/json',
         type: 'json'
     },
     uku: {
