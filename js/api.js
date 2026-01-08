@@ -56,6 +56,8 @@ class VodClient {
         const targetUrl = new URL(this.source.url);
         Object.keys(params).forEach(key => targetUrl.searchParams.append(key, params[key]));
 
+        const errors = []; // 收集所有策略的错误日志
+
         // 策略1: 直连 (Direct)
         // 适用于支持 CORS 的 HTTPS 资源站
         try {
@@ -72,8 +74,9 @@ class VodClient {
             if (response.ok) {
                 return await response.json();
             }
+            errors.push(`Direct: HTTP ${response.status}`);
         } catch (e) {
-            console.warn('[API] Direct fetch failed (CORS/Network?), switching to proxy...', e);
+            errors.push(`Direct: ${e.message}`);
         }
 
         // 策略2: Cloudflare 代理 (CF Proxy)
@@ -93,8 +96,12 @@ class VodClient {
             if (response.ok) {
                 return await response.json();
             }
+            // 尝试读取代理返回的错误文本以便调试
+            let errInfo = '';
+            try { errInfo = (await response.text()).substring(0, 50); } catch (e) { }
+            errors.push(`Proxy: HTTP ${response.status} ${errInfo}`);
         } catch (e) {
-            console.warn('[API] CF Proxy failed, switching to Public Proxy...', e);
+            errors.push(`Proxy: ${e.message}`);
         }
 
         // 策略3: 公共代理 (corsproxy.io) - 最后的救命稻草
@@ -108,11 +115,16 @@ class VodClient {
             if (response.ok) {
                 return await response.json();
             }
-            throw new Error(`All strategies failed. Last Status: ${response.status}`);
+            errors.push(`Public: HTTP ${response.status}`);
         } catch (e) {
-            console.error('[API] All strategies failed:', e);
-            throw e;
+            errors.push(`Public: ${e.message}`);
         }
+
+        // 如果到了这里，说明所有策略都失败了
+        console.error('[API] All strategies failed', errors);
+        const compositeError = new Error('All strategies failed');
+        compositeError.logs = errors; // 附加日志供 UI 显示
+        throw compositeError;
     }
 
     /**
