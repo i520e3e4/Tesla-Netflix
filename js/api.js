@@ -52,36 +52,66 @@ class VodClient {
      * @param {Object} params - 查询参数
      */
     async _request(params = {}) {
-        // 使用 Cloudflare Functions 代理
-        // 目标: /api/proxy?url=ENCODED_TARGET_URL&other_params...
-        const proxyUrl = new URL('/api/proxy', window.location.origin);
-        // 使用 Base64 编码 URL，避免被防广告插件或 WAF 拦截
-        proxyUrl.searchParams.append('url', btoa(this.source.url));
+        // 构建目标 URL
+        const targetUrl = new URL(this.source.url);
+        Object.keys(params).forEach(key => targetUrl.searchParams.append(key, params[key]));
 
-        // 追加其他业务参数
-        Object.keys(params).forEach(key => proxyUrl.searchParams.append(key, params[key]));
-
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), this.timeout);
-
+        // 策略1: 直连 (Direct)
+        // 适用于支持 CORS 的 HTTPS 资源站
         try {
-            console.log(`[API] Proxy Request: ${proxyUrl.toString()}`);
-            const response = await fetch(proxyUrl, {
+            console.log(`[API] Trying Direct: ${targetUrl}`);
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 5000); // 直连 5s 超时
+
+            const response = await fetch(targetUrl, {
                 signal: controller.signal,
                 referrerPolicy: 'no-referrer'
             });
             clearTimeout(id);
 
-            if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
+            if (response.ok) {
+                return await response.json();
             }
+        } catch (e) {
+            console.warn('[API] Direct fetch failed (CORS/Network?), switching to proxy...', e);
+        }
 
-            const data = await response.json();
-            return data;
-        } catch (error) {
+        // 策略2: Cloudflare 代理 (CF Proxy)
+        try {
+            const proxyUrl = new URL('/api/proxy', window.location.origin);
+            proxyUrl.searchParams.append('url', btoa(targetUrl.toString())); // Base64 传递完整 URL
+
+            console.log(`[API] Trying CF Proxy: ${proxyUrl}`);
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 10000); // 代理 10s 超时
+
+            const response = await fetch(proxyUrl, {
+                signal: controller.signal
+            });
             clearTimeout(id);
-            console.error('[API] Request failed:', error);
-            throw error;
+
+            if (response.ok) {
+                return await response.json();
+            }
+        } catch (e) {
+            console.warn('[API] CF Proxy failed, switching to Public Proxy...', e);
+        }
+
+        // 策略3: 公共代理 (corsproxy.io) - 最后的救命稻草
+        try {
+            // corsproxy.io 直接在 URL 前加前缀
+            const publicProxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl.toString())}`;
+
+            console.log(`[API] Trying Public Proxy: ${publicProxyUrl}`);
+            const response = await fetch(publicProxyUrl);
+
+            if (response.ok) {
+                return await response.json();
+            }
+            throw new Error(`All strategies failed. Last Status: ${response.status}`);
+        } catch (e) {
+            console.error('[API] All strategies failed:', e);
+            throw e;
         }
     }
 

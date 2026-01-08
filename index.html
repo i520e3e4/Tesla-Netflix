@@ -657,63 +657,23 @@
 
             grid.innerHTML = `
                 <div style="padding: 40px; text-align: center; background: var(--bg-card); border-radius: 8px; max-width: 800px; margin: 0 auto;">
-                    <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 20px;">❌ 数据加载失败</h3>
+                    <h3 style="color: var(--accent); margin-bottom: 16px; font-size: 20px;">❌ 所有线路连接失败</h3>
                     
                     <div style="text-align: left; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 4px; margin-bottom: 20px; font-family: monospace; font-size: 12px; color: #ccc;">
                         <div><strong>Error:</strong> ${error.message}</div>
-                        <div id="diag-log" style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
-                            正在运行诊断...
+                        <div style="color: #666; margin-top: 8px;">
+                            已尝试: 直连 (Direct) -> CF 代理 -> 公共代理。<br>
+                            全部失败，请确认您的网络连接，或切换下方其他资源站。
                         </div>
                     </div>
 
-                    <div style="font-size: 14px; color: #999; margin-bottom: 24px;">
-                        请尝试切换其他线路，或等待自动诊断完成。
-                    </div>
-                    
-                    <div style="margin-bottom: 16px; color: var(--text-primary);">切换线路:</div>
+                    <div style="margin-bottom: 16px; color: var(--text-primary);">⚡ 建议切换到以下资源站:</div>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
                         ${buttonsHtml}
                     </div>
                 </div>
             `;
-
-            // 运行诊断
-            runDiagnostics();
-        }
-
-        async function runDiagnostics() {
-            const logEl = document.getElementById('diag-log');
-            const log = (msg) => logEl.innerHTML += `<div>${msg}</div>`;
-
-            try {
-                // 1. 检查 API 连通性
-                log(`[TEST] Connecting to proxy...`);
-                // 使用一个极其稳定的 URL 测试
-                const testTarget = 'https://www.baidu.com';
-                // 使用 btoa 编码，模拟真实业务请求
-                const proxyUrl = `/api/proxy?url=${encodeURIComponent(btoa(testTarget))}`;
-
-                const start = performance.now();
-                const res = await fetch(proxyUrl);
-                const time = (performance.now() - start).toFixed(0);
-
-                log(`[HTTP] Status: ${res.status} ${res.statusText} (${time}ms)`);
-
-                if (res.ok) {
-                    log(`<span style="color:#4caf50">✅ 代理服务正常 (Proxy is working)</span>`);
-                    log(`提示：如果代理正常但仍无法加载视频，可能是当前选用的资源站(${window.store?.getSettings()?.source})不稳定，请切换线路。`);
-                } else {
-                    log(`<span style="color:#f44336">❌ 代理服务报错</span>`);
-                    try {
-                        const text = await res.text();
-                        log(`[Response] ${text.substring(0, 100)}`);
-                    } catch (e) { }
-                }
-
-            } catch (e) {
-                log(`<span style="color:#f44336">❌ 网络/CORS 致命错误: ${e.message}</span>`);
-                log(`[Info] UA: ${navigator.userAgent}`);
-            }
+            // 移除独立的诊断逻辑，因为 api.js 已经内置了多级重试
         }
 
         // 切换源并重载
